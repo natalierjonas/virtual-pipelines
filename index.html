@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Virtual Pipelines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        html {
+            background: #1a2a5a;
+        }
+
+        body {
+            margin: 0;
+            padding: 8em;
+            font-size: 22px;
+            font-family: 'Source Sans 3', sans-serif;
+            text-rendering: optimizeLegibility;
+            background: #1a2a5a;
+            color: #ffffff;
+        }
+
+        .content {
+            max-width: 1100px;
+            margin: auto;
+            padding-left: 2em;
+            padding-right: 2em;
+        }
+
+        .header {
+            padding: 2em 0 0.5em;
+        }
+
+        .graph-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2em;
+            margin: 2em 0 3em;
+        }
+
+        .graph-cell {
+            height: 375px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .graph-cell .flourish-embed,
+        .graph-cell .flourish-embed iframe {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        a {
+            color: #F58220;
+        }
+
+        .footer {
+            background: #1a2a5a;
+            text-align: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            -webkit-text-stroke: 0.4px rgba(0,0,0,0.85);
+            margin-top: 1em;
+            padding: 2em 0;
+        }
+
+        figure {
+            margin: 0;
+            padding-bottom: 1.2em;
+        }
+
+        figcaption {
+            font-size: 0.8em;
+            text-align: center;
+            margin-top: 0.5em;
+            color: #666;
+        }
+
+        h1 {
+            font-family: 'Source Sans 3', sans-serif;
+            font-weight: bold;
+            font-size: 3em;
+            line-height: 1.2;
+            margin: 0 0 0.5em;
+        }
+
+        .subhead {
+            font-family: 'Source Sans 3', sans-serif;
+        }
+
+        iframe,
+        img,
+        video {
+            max-width: 100%;
+        }
+
+        p {
+            line-height: 1.6;
+            margin: 0;
+            padding-bottom: 1.2em;
+        }
+
+        .full-width figure {
+            text-align: center;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 1.5em;
+            padding-bottom: 1em;
+            line-height: 1.6;
+        }
+
+        iframe {
+            padding-bottom: 1.2em;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            background: #fff880;
+        }
+
+        .title-screen {
+            position: relative;
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin: -8em -8em 0;
+            padding: 8em;
+            box-sizing: border-box;
+        }
+
+        .title-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(0,0,0,0.07) 3px,
+                rgba(0,0,0,0.07) 4px
+            );
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .transition-zone {
+            position: relative;
+            z-index: 200;
+            transform: translateZ(0);
+            margin: -16em -8em 0;
+            padding: 16em 8em 3em;
+            box-sizing: border-box;
+            background: transparent;
+        }
+
+        .transition-zone .byline {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 1.5em;
+        }
+
+        .title-screen h1 {
+            position: relative;
+            z-index: 1;
+            font-size: 4.2em;
+            -webkit-text-stroke: 1px rgba(0,0,0,0.85);
+            text-shadow: 0 2px 24px rgba(0,0,0,0.9), 0 0 60px rgba(0,0,0,0.6);
+        }
+
+        .sticky-panel {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3em 2.5em;
+            box-sizing: border-box;
+            opacity: 0;
+            transform: translateY(18px) scale(0.97);
+            transition: opacity 0.45s ease, transform 0.45s ease;
+            pointer-events: none;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .sticky-panel.is-visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .sticky-stat {
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: clamp(2.8em, 5vw, 4.5em);
+            font-weight: bold;
+            color: #F58220;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.4em;
+            text-shadow: 0 3px 24px rgba(0,0,0,0.5);
+        }
+
+        .sticky-detail {
+            font-size: clamp(0.85em, 1.1vw, 1.05em);
+            color: rgba(255,255,255,0.88);
+            max-width: 300px;
+            line-height: 1.6;
+            border-top: 1px solid rgba(245,130,32,0.4);
+            padding-top: 0.75em;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                font-size: 14px;
+            }
+
+            .content {
+                padding-left: 1.5em;
+                padding-right: 1.5em;
+            }
+
+        }
+    </style>
+    <link href="scrolly-styles.css" rel="stylesheet">
+    <script src="https://unpkg.com/intersection-observer@0.5.1/intersection-observer.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/scrollama/3.2.0/scrollama.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/d3.min.js"></script>
+</head>
+
+<body>
+    <div class="title-screen">
+        <img src="truck.gif" alt="" style="position:absolute;width:65%;height:auto;bottom:-10%;left:0;z-index:0;pointer-events:none;">
+        <h1><span style="color:#096872">"Virtual Pipelines"</span> Transport Natural Gas <span style="color:#096872">Across the Country</span></h1>
+    </div>
+    <div class="transition-zone">
+        <div class="byline">
+            <p style="font-weight:bold; color:#096872; font-size:1.4em; -webkit-text-stroke:1.5px rgba(0,0,0,0.9);">By: Natalie Jonas</p>
+        </div>
+    </div>
+    <div class="content">
+        <p>More than <a href="https://www.eia.gov/energyexplained/natural-gas/natural-gas-pipelines.php">3 million miles</a> of natural gas pipelines move natural gas throughout the U.S. Yet, significant portions of the country — primarily rural, economically disadvantaged towns — lack such infrastructure, and therefore don't have reliable or cost-effective access to such energy. Virtual pipelines help address this gap. But, virtual pipelines are not subject to the same stringent oversight as traditional oil and gas systems, a regulatory gap that is often exploited.</p>
+        <p>Virtual pipelines use piecemeal infrastructure — trains, boats and trucks — as parts of a whole, allowing oil and gas to move and flow where it wasn't able to reach before. This method is cheaper than constructing pipelines, which is a lengthy and costly process, particularly in remote locations.</p>
+        <p>According to an analysis of the U.S. Energy Information Administration <a href="https://www.eia.gov/naturalgas/">data</a>, approximately 43% of natural gas was used to generate electric power, 29% for industrial use and an additional 16% for residential purposes, particularly heating.</p>
+    </div>
+    <div class="content">
+        <div class="graph-grid">
+            <div class="graph-cell"><div class="flourish-embed flourish-hierarchy" data-src="visualisation/28760438"><script src="https://public.flourish.studio/resources/embed.js"></script></div></div>
+            <div class="graph-cell"><div class="flourish-embed flourish-hierarchy" data-src="visualisation/28761338"><script src="https://public.flourish.studio/resources/embed.js"></script></div></div>
+            <div class="graph-cell"><div class="flourish-embed flourish-hierarchy" data-src="visualisation/28761430"><script src="https://public.flourish.studio/resources/embed.js"></script></div></div>
+        </div>
+    </div>
+        <p style="padding-bottom:5em;"> U.S. Secretary of Energy Chris Wright <a href="https://www.energy.gov/articles/secretary-wright-signs-agreements-grow-american-lng-exports-advances-trump-peace-pipelines">announced</a> the launch of the Trump Peace Pipelines Framework on April 28, noting a new infusion of billions of dollars into natural gas infrastructure in Central and Eastern Europe. The effort will allow such areas the capacity to import higher amounts of liquefied natural gas (LNG) from the U.S. There are <a href="https://ballotpedia.org/Natural_gas_storage">nearly 400</a> natural gas storage sites in the U.S., which largely hold LNG extracted from the Gulf Coast, states such as Texas and Louisiana. Eight terminals in the U.S. ship LNG to the rest of the world — Europe <a href="https://www.eia.gov/todayinenergy/detail.php?id=67224">imports 69%</a> of the U.S.'s LNG, <a href="https://www.eia.gov/todayinenergy/detail.php?id=67224">up 35%</a> from the year prior to Russia's invasion of Ukraine</a>. <a href="https://www.nytimes.com/2026/04/28/business/energy-environment/iran-hormuz-lng-united-states.html">Five new terminals</a> will open in the U.S. by the end of 2027.</p>
+<div class="columns is-gapless" style="margin:1.5em 0 0; align-items:center;">
+    <div class="column is-5" style="padding:2em 2em 2em 0;">
+        <p style="line-height:1.6; margin:0;">The closure and turmoil surrounding LNG movement through the Strait of Hormuz has sent prices soaring, the most disruptive event in the natural gas market since Russia's invasion of Ukraine. Natural gas supplies <a href="https://www.iea.org/world/energy-mix">nearly 23%</a> of global energy and is becoming even more valuable due to its ability to take different forms and move around easier, in some cases, than oil or other energy sources — abetted by a burgeoning network of virtual pipelines.</p>
+    </div>
+    <div class="column is-7">
+        <style media="screen,print">
+        #g-lng_exports-box, #g-lng_exports-box .g-artboard { margin:0 auto; }
+        #g-lng_exports-box p { margin:0; }
+        #g-lng_exports-box .g-aiAbs { position:absolute; }
+        #g-lng_exports-box .g-aiImg { position:absolute; top:0; display:block; width:100% !important; }
+        #g-lng_exports-box .g-aiSymbol { position:absolute; box-sizing:border-box; }
+        #g-lng_exports-box .g-aiPointText p { white-space:nowrap; }
+        #g-lng_exports-full { position:relative; overflow:hidden; }
+        #g-lng_exports-full p { font-weight:700; line-height:12px; height:auto; opacity:1; letter-spacing:0em; font-size:10px; text-align:left; color:rgb(255,147,30); text-transform:none; padding-bottom:0; padding-top:0; mix-blend-mode:normal; font-style:normal; position:static; }
+        #g-lng_exports-full .g-pstyle0 { line-height:26px; height:26px; font-size:22px; text-align:right; }
+        #g-lng_exports-full .g-pstyle1 { line-height:26px; height:26px; font-size:22px; text-align:right; color:rgb(255,255,255); }
+        #g-lng_exports-full .g-pstyle2 { height:12px; }
+        #g-lng_exports-full .g-pstyle3 { line-height:10px; height:10px; font-size:8px; color:rgb(9,104,114); }
+        #g-lng_exports-full .g-pstyle4 { height:12px; color:rgb(9,104,114); }
+        #g-lng_exports-full .g-pstyle5 { line-height:11px; height:11px; font-size:9px; color:rgb(9,104,114); }
+        #g-lng_exports-full .g-cstyle0 { color:rgb(255,255,255); }
+        #g-lng_exports-medium { position:relative; overflow:hidden; }
+        #g-lng_exports-medium p { font-weight:700; line-height:10px; height:auto; opacity:1; letter-spacing:0em; font-size:8px; text-align:left; color:rgb(255,147,30); text-transform:none; padding-bottom:0; padding-top:0; mix-blend-mode:normal; font-style:normal; position:static; }
+        #g-lng_exports-medium .g-pstyle0 { line-height:26px; height:26px; font-size:22px; text-align:right; }
+        #g-lng_exports-medium .g-pstyle1 { line-height:26px; height:26px; font-size:22px; text-align:right; color:rgb(255,255,255); }
+        #g-lng_exports-medium .g-pstyle2 { height:10px; }
+        #g-lng_exports-medium .g-pstyle3 { line-height:8px; height:8px; font-size:7px; color:rgb(9,104,114); }
+        #g-lng_exports-medium .g-pstyle4 { height:10px; color:rgb(9,104,114); }
+        #g-lng_exports-medium .g-pstyle5 { line-height:9px; height:9px; color:rgb(9,104,114); }
+        #g-lng_exports-medium .g-cstyle0 { color:rgb(255,255,255); }
+        #g-lng_exports-mobile { position:relative; overflow:hidden; }
+        #g-lng_exports-mobile p { font-weight:700; line-height:13px; height:auto; opacity:1; letter-spacing:0em; font-size:11px; text-align:left; color:rgb(255,147,30); text-transform:none; padding-bottom:0; padding-top:0; mix-blend-mode:normal; font-style:normal; position:static; }
+        #g-lng_exports-mobile .g-pstyle0 { line-height:22px; height:22px; font-size:18px; text-align:right; }
+        #g-lng_exports-mobile .g-pstyle1 { line-height:22px; height:22px; font-size:18px; text-align:right; color:rgb(255,255,255); }
+        #g-lng_exports-mobile .g-pstyle2 { height:13px; }
+        #g-lng_exports-mobile .g-pstyle3 { line-height:11px; height:11px; font-size:9px; color:rgb(9,104,114); }
+        #g-lng_exports-mobile .g-pstyle4 { height:13px; color:rgb(9,104,114); }
+        #g-lng_exports-mobile .g-pstyle5 { line-height:12px; height:12px; font-size:10px; color:rgb(9,104,114); }
+        #g-lng_exports-mobile .g-cstyle0 { color:rgb(255,255,255); }
+        </style>
+        <div id="g-lng_exports-box" class="ai2html">
+        <div id="g-lng_exports-full" class="g-artboard" style="width:700px; height:425px;" data-aspect-ratio="1.647" data-min-width="700">
+        <div style=""></div>
+        <img id="g-lng_exports-full-img" class="g-aiImg" alt="" src="ai2html-output/lng_exports-full.png"/>
+        <div id="g-ai0-1" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:7.5485%;margin-top:-27.1px;right:1.6915%;width:386px;">
+        <p class="g-pstyle0"><span class="g-cstyle0">U.S. </span>LNG exports have skyrocketed<span class="g-cstyle0"> in </span></p>
+        <p class="g-pstyle1">the past decade</p>
+        </div>
+        <div id="g-ai0-2" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:24.3551%;margin-top:-6.5px;left:91.0473%;width:68px;"><p class="g-pstyle2">10 million</p></div>
+        <div id="g-ai0-3" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:39.8845%;margin-top:-6.5px;left:91.0174%;width:71px;"><p class="g-pstyle2">7.5 million</p></div>
+        <div id="g-ai0-4" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:53.061%;margin-top:-6.5px;left:91.1495%;width:63px;"><p class="g-pstyle2">5 million</p></div>
+        <div id="g-ai0-5" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:67.6492%;margin-top:-6.5px;left:90.6832%;width:71px;"><p class="g-pstyle2">2.5 million</p></div>
+        <div id="g-ai0-6" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:70.982%;margin-top:-5.7px;left:85.4264%;width:117px;"><p class="g-pstyle3">in million cubic feet:</p></div>
+        <div id="g-ai0-7" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:89.061%;margin-top:-6.5px;left:49.454%;width:44px;"><p class="g-pstyle4">1980</p></div>
+        <div id="g-ai0-8" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:89.061%;margin-top:-6.5px;left:57.7366%;width:44px;"><p class="g-pstyle4">1990</p></div>
+        <div id="g-ai0-9" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:89.061%;margin-top:-6.5px;left:66.0206%;width:44px;"><p class="g-pstyle4">2000</p></div>
+        <div id="g-ai0-10" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:89.061%;margin-top:-6.5px;left:74.3046%;width:44px;"><p class="g-pstyle2">2010</p></div>
+        <div id="g-ai0-11" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:89.061%;margin-top:-6.5px;left:82.5871%;width:44px;"><p class="g-pstyle2">2020</p></div>
+        <div id="g-ai0-12" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:94.5902%;margin-top:-6px;left:70.1889%;width:215px;"><p class="g-pstyle5">Data: U.S. Energy Information Administration </p></div>
+        </div>
+        <div id="g-lng_exports-medium" class="g-artboard" style="width:490px; height:350px;" data-aspect-ratio="1.4" data-min-width="490" data-max-width="699">
+        <div style=""></div>
+        <img id="g-lng_exports-medium-img" class="g-aiImg" alt="" src="ai2html-output/lng_exports-medium.png"/>
+        <div id="g-ai1-1" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:8.0232%;margin-top:-27.1px;right:1.5322%;width:419px;">
+        <p class="g-pstyle0"><span class="g-cstyle0">U.S. </span>LNG exports have skyrocketed<span class="g-cstyle0"> in </span></p>
+        <p class="g-pstyle1">the past decade</p>
+        </div>
+        <div id="g-ai1-2" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:27.583%;margin-top:-5.5px;left:88.9469%;width:64px;"><p class="g-pstyle2">10 million</p></div>
+        <div id="g-ai1-3" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:43.0116%;margin-top:-5.5px;left:88.9076%;width:67px;"><p class="g-pstyle2">7.5 million</p></div>
+        <div id="g-ai1-4" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:56.4402%;margin-top:-5.5px;left:89.0804%;width:59px;"><p class="g-pstyle2">5 million</p></div>
+        <div id="g-ai1-5" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:70.7259%;margin-top:-5.5px;left:88.4706%;width:67px;"><p class="g-pstyle2">2.5 million</p></div>
+        <div id="g-ai1-6" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:82.0615%;margin-top:-4.2px;left:74.4242%;width:111px;"><p class="g-pstyle3">in million cubic feet:</p></div>
+        <div id="g-ai1-7" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:92.4402%;margin-top:-5.5px;left:34.537%;width:42px;"><p class="g-pstyle4">1980</p></div>
+        <div id="g-ai1-8" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:92.4402%;margin-top:-5.5px;left:45.3719%;width:42px;"><p class="g-pstyle4">1990</p></div>
+        <div id="g-ai1-9" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:92.4402%;margin-top:-5.5px;left:56.2085%;width:42px;"><p class="g-pstyle4">2000</p></div>
+        <div id="g-ai1-10" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:92.4402%;margin-top:-5.5px;left:67.045%;width:42px;"><p class="g-pstyle2">2010</p></div>
+        <div id="g-ai1-11" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:92.4402%;margin-top:-5.5px;left:77.8799%;width:42px;"><p class="g-pstyle2">2020</p></div>
+        <div id="g-ai1-12" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:97.8937%;margin-top:-4.6px;left:61.6614%;width:199px;"><p class="g-pstyle5">Data: U.S. Energy Information Administration </p></div>
+        </div>
+        <div id="g-lng_exports-mobile" class="g-artboard" style="max-width:375px; max-height:471px;" data-aspect-ratio="0.797" data-min-width="0" data-max-width="489">
+        <div style="padding:0 0 125.5467% 0;"></div>
+        <img id="g-lng_exports-mobile-img" class="g-aiImg" alt="" src="ai2html-output/lng_exports-mobile.png"/>
+        <div id="g-ai2-1" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:7.3616%;margin-top:-22.7px;right:1.969%;width:299px;">
+        <p class="g-pstyle0"><span class="g-cstyle0">U.S. </span>LNG exports have skyrocketed<span class="g-cstyle0"> in </span></p>
+        <p class="g-pstyle1">the past decade</p>
+        </div>
+        <div id="g-ai2-2" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:14.8642%;margin-top:-7px;left:85.5042%;width:67px;"><p class="g-pstyle2">10 million</p></div>
+        <div id="g-ai2-3" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:30.1573%;margin-top:-7px;left:85.45%;width:70px;"><p class="g-pstyle2">7.5 million</p></div>
+        <div id="g-ai2-4" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:43.1139%;margin-top:-7px;left:85.6891%;width:61px;"><p class="g-pstyle2">5 million</p></div>
+        <div id="g-ai2-5" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:57.345%;margin-top:-7px;left:84.8458%;width:70px;"><p class="g-pstyle2">2.5 million</p></div>
+        <div id="g-ai2-6" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:68.3714%;margin-top:-5.9px;left:67.7948%;width:115px;"><p class="g-pstyle3">in million cubic feet:</p></div>
+        <div id="g-ai2-7" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:78.3731%;margin-top:-7px;left:10.2911%;width:44px;"><p class="g-pstyle4">1980</p></div>
+        <div id="g-ai2-8" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:78.3731%;margin-top:-7px;left:25.2685%;width:44px;"><p class="g-pstyle4">1990</p></div>
+        <div id="g-ai2-9" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:78.3731%;margin-top:-7px;left:40.2484%;width:44px;"><p class="g-pstyle4">2000</p></div>
+        <div id="g-ai2-10" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:78.3731%;margin-top:-7px;left:55.2284%;width:44px;"><p class="g-pstyle2">2010</p></div>
+        <div id="g-ai2-11" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:78.3731%;margin-top:-7px;left:70.2057%;width:44px;"><p class="g-pstyle2">2020</p></div>
+        <div id="g-ai2-12" class="g-ai2html-settings g-aiAbs g-aiPointText" style="top:83.7801%;margin-top:-6.4px;left:47.7859%;width:209px;"><p class="g-pstyle5">Data: U.S. Energy Information Administration </p></div>
+        </div>
+        </div>
+        </div>
+    </div>
+</div>
+        <p style="margin-top:0;">Extracted natural gas can be frozen, compressed, liquified and reheated, travelling <a href="https://pubs.acs.org/doi/10.1021/acs.est.2c01205">an average of 506 miles</a>, <a href="https://pubs.acs.org/doi/10.1021/acs.est.2c01205">upwards of 1,864 miles</a>, from its origin to locations within the U.S. But, the advent of resource-intensive data centers in remote locations along with the ongoing market squeeze is spurring on increased investment in virtual pipelines, which is expected to grow from $172 billion in 2025 to $1.92 billion by 2034, <a href="https://www.fortunebusinessinsights.com/industry-reports/virtual-pipeline-market-101758">according to Fortune Business Insights</a>.</p>
+    <section id="scrolly-ai2html" class="scrolly-container">
+        <div class="columns is-gapless">
+        <div class="column is-6 steps-container-col">
+        <div class="steps-container">
+            <div class="step" id="step-one">
+                <div>
+                    <p>Compressed natural gas (CNG) and LNG are <a href="https://www.fortunebusinessinsights.com/industry-reports/virtual-pipeline-market-101758">most commonly</a> transported using virtual pipelines. Compressed and liquefied natural gas is kept in a "boiling cryogen" state in fortified containers kept below -259.6°F.</p>
+                    <p>These tanks are transported on boats, trains and trucks — or a combination of the three.</p>
+                </div>
+            </div>
+            <div class="step" id="step-two">
+                <div><p>Natural gas is combustible and susceptible to explosion if it mixes with oxygen, is exposed to heat or escapes containment. The approval of natural gas transportation via railroads in 2020, under the first Trump administration, raised fears of <a href="https://vjel.vermontlaw.edu/top-ten/2020/12/unearthing-virtual-pipelines/">"bomb trains."</a> The frigid temperature LNG and CNG are kept at also pose potential risks.</p></div>
+            </div>
+            <div class="step" id="step-three">
+                <div><p>The Pipeline and Hazardous Materials Safety Administration (PHMSA) oversees the safety and regulation of virtual pipelines. Traditional pipelines in the U.S. are subject to the stringent regulation under the Federal Energy Regulatory Commission, but virtual pipelines are not. Vermont, which has the least gas pipeline infrastructure of any state in the continental U.S., relies on virtual pipelines. <a href="https://marketintelo.com/report/virtual-pipeline-market">Nearly 68%</a> of LNG and CNG is transported on trucks in virtual pipelines.</p></div>
+            </div>
+            <div class="step" id="step-four">
+                <div><p>Multiple <a href="https://vnews.com/2024/08/23/virtual-pipeline-of-gas-tankers-in-champlain-valley-sparks-concern-56615943/">reports</a> of accidents involving virtual pipelines were reported in 2024. Two trucks owned by NG Advantage, laden with containers of compressed natural gas, broke out in flames that year. NG Advantage, the first company to market a "virtual pipeline" in the U.S., is just one player in the growing field. NG Advantage operates multiple routes, one of which involves the daily transportation of compressed methane on trucks that leave from Milton, Vermont, headed to a paper mill nearly 70 miles away in Ticonderoga, New York.</p></div>
+            </div>
+        </div>
+        </div>
+        <div class="column is-6 sticky-col">
+        <div class="sticky-thing">
+            <img id="scrolly-sticky-img" src="thermometer.gif" alt="" style="width:100%;height:auto;display:block;transition:transform 0.4s ease;">
+        </div><!-- /sticky-thing -->
+        </div><!-- /column is-7 -->
+        </div><!-- /columns -->
+    </section>
+    <div class="content" style="padding-top: 3em;">
+        <p>Proposed pipeline systems, such as the Keystone XL and Dakota Access, have been successfully challenged by activists. The proliferation of virtual pipeline systems creates new methods to move natural gas in the absence of pipeline mega-projects. But, the piecemeal movement of natural gas is not subject to the regulatory oversight physical pipelines are, despite virtual pipelines potentially presenting even more harmful environmental risks.</p>
+    </div>
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+    <script>
+        /* Add your step-based graphic changes here */
+        d3.select("#step-one").on('stepin', function (e) {
+            console.log("step one")
+        })
+        d3.select("#step-two").on('stepin', function (e) {
+            const img = document.getElementById('scrolly-sticky-img')
+            img.src = 'thermometer.gif'
+            img.style.transform = 'scale(1)'
+        })
+        d3.select("#step-three").on('stepin', function (e) {
+            const img = document.getElementById('scrolly-sticky-img')
+            img.src = 'train.gif'
+            img.style.transform = 'scale(1.4)'
+        })
+        d3.select("#step-four").on('stepin', function (e) {
+            const img = document.getElementById('scrolly-sticky-img')
+            img.src = 'train.gif'
+            img.style.transform = 'scale(1.4)'
+        })
+        d3.select("#step-five").on('stepin', function (e) {
+            console.log("step five")
+        })
+    </script>
+
+
+
+    <script>
+        /*************
+        
+        This is the JavaScript that makes the scrolly work 
+        
+        *************/
+
+        /* 
+        This part attaches a scroll to the element with id="scrolly-ai2html"    
+        */
+        (() => {
+            const steps = Array.from(document.querySelectorAll('#scrolly-ai2html .step'))
+            const label = document.getElementById('step-label')
+            const stepNames = ['01', '02', '03', '04', '05']
+
+            const panels = Array.from(document.querySelectorAll('.sticky-panel'))
+
+            function activateStep(index) {
+                steps.forEach(el => el.classList.remove('is-active'))
+                panels.forEach(p => p.classList.remove('is-visible'))
+                if (index >= 0 && index < steps.length) {
+                    steps[index].classList.add('is-active')
+                    if (label) label.textContent = stepNames[index] + ' / ' + stepNames[stepNames.length - 1]
+                    if (panels[index]) panels[index].classList.add('is-visible')
+                }
+            }
+
+            const scroller = scrollama()
+            scroller
+                .setup({
+                    step: '#scrolly-ai2html .step',
+                    offset: 0.55,
+                    debug: false,
+                })
+                .onStepEnter(({ element, index }) => {
+                    activateStep(index)
+                    element.dispatchEvent(new CustomEvent('stepin'))
+                })
+                .onStepExit(({ element, index, direction }) => {
+                    if (direction === 'up' && index > 0) activateStep(index - 1)
+                    else if (direction === 'down' && index === steps.length - 1) steps.forEach(el => el.classList.remove('is-active'))
+                    element.dispatchEvent(new CustomEvent('stepout'))
+                })
+
+            window.addEventListener('resize', scroller.resize)
+
+            window.addEventListener('scroll', function () {
+                let activeIndex = -1;
+                steps.forEach(function (step, i) {
+                    const rect = step.getBoundingClientRect();
+                    if (rect.top < window.innerHeight * 0.6) {
+                        activeIndex = i;
+                    }
+                });
+                activateStep(activeIndex);
+            }, { passive: true });
+        })()
+
+    </script>
+
+    <script type="text/javascript">
+            (function () {
+                // only want one resizer on the page
+                if (document.documentElement.className.indexOf("g-resizer-v3-init") > -1) return;
+                document.documentElement.className += " g-resizer-v3-init";
+                // require IE9+
+                if (!("querySelector" in document)) return;
+                function resizer() {
+                    var elements = Array.prototype.slice.call(document.querySelectorAll(".g-artboard[data-min-width]")),
+                        widthById = {};
+                    elements.forEach(function (el) {
+                        var parent = el.parentNode,
+                            width = widthById[parent.id] || parent.getBoundingClientRect().width,
+                            minwidth = el.getAttribute("data-min-width"),
+                            maxwidth = el.getAttribute("data-max-width");
+                        widthById[parent.id] = width;
+
+                        if (+minwidth <= width && (+maxwidth >= width || maxwidth === null)) {
+                            el.style.display = "block";
+                        } else {
+                            el.style.display = "none";
+                        }
+                    });
+                    try {
+                        if (window.parent && window.parent.$) {
+                            window.parent.$("body").trigger("resizedcontent", [window]);
+                        }
+                        if (window.require) {
+                            require(['foundation/main'], function () {
+                                require(['shared/interactive/instances/app-communicator'], function (AppCommunicator) {
+                                    AppCommunicator.triggerResize();
+                                });
+                            });
+                        }
+                    } catch (e) { console.log(e); }
+                }
+
+                document.addEventListener('DOMContentLoaded', resizer);
+                // feel free to replace throttle with _.throttle, if available
+                window.addEventListener('resize', throttle(resizer, 200));
+
+                function throttle(func, wait) {
+                    // from underscore.js
+                    var _now = Date.now || function () { return new Date().getTime(); },
+                        context, args, result, timeout = null, previous = 0;
+                    var later = function () {
+                        previous = _now();
+                        timeout = null;
+                        result = func.apply(context, args);
+                        if (!timeout) context = args = null;
+                    };
+                    return function () {
+                        var now = _now(), remaining = wait - (now - previous);
+                        context = this;
+                        args = arguments;
+                        if (remaining <= 0 || remaining > wait) {
+                            if (timeout) {
+                                clearTimeout(timeout);
+                                timeout = null;
+                            }
+                            previous = now;
+                            result = func.apply(context, args);
+                            if (!timeout) context = args = null;
+                        } else if (!timeout && options && options.trailing !== false) {
+                            timeout = setTimeout(later, remaining);
+                        }
+                        return result;
+                    };
+                }
+
+
+            })();
+    </script>
+
+    <script>
+        (function () {
+            const h1 = document.querySelector('.title-screen h1');
+            let glitchTimer;
+
+            function runGlitch() {
+                const steps = 3 + Math.floor(Math.random() * 5);
+                let t = 0;
+                for (let i = 0; i < steps; i++) {
+                    setTimeout(() => {
+                        const x  = (Math.random() - 0.5) * 14;
+                        const rx = (Math.random() - 0.5) * 10;
+                        const cx = (Math.random() - 0.5) * 10;
+                        h1.style.transform  = `translateX(${x}px) skewX(${(Math.random()-0.5)*2}deg)`;
+                        h1.style.filter     = `drop-shadow(${rx}px 0 0 rgba(245,130,32,0.95)) drop-shadow(${cx}px 0 0 rgba(0,220,255,0.8))`;
+                        // occasional full-row clip for a harder glitch hit
+                        if (Math.random() > 0.6) {
+                            const top = Math.random() * 80;
+                            const bot = top + 5 + Math.random() * 20;
+                            h1.style.clipPath = `inset(${top}% 0 ${100-bot}% 0)`;
+                        }
+                    }, t);
+                    t += 30 + Math.random() * 70;
+                }
+                setTimeout(() => {
+                    h1.style.transform = '';
+                    h1.style.filter    = '';
+                    h1.style.clipPath  = '';
+                    glitchTimer = setTimeout(runGlitch, 1200 + Math.random() * 3800);
+                }, t);
+            }
+
+            glitchTimer = setTimeout(runGlitch, 600);
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const bg = document.createElement('canvas');
+            bg.id = 'bg-canvas';
+            bg.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;';
+            document.body.prepend(bg);
+            const ctx = bg.getContext('2d');
+
+            function resize() { bg.width = innerWidth; bg.height = innerHeight; }
+            window.addEventListener('resize', resize);
+            resize();
+
+            (function tick() {
+                const t = Date.now() / 1000;
+                const w = bg.width, h = bg.height;
+                ctx.clearRect(0, 0, w, h);
+
+                // slow breath: 6s cycle for main, 9s for orange
+                const breathe = (Math.sin(t * (Math.PI * 2 / 6)) + 1) / 2;       // 0–1
+                const orange  = (Math.sin(t * (Math.PI * 2 / 9) - 1) + 1) / 2;   // 0–1, offset phase
+
+                // main center glow — deep blue breathing to teal
+                const r1 = w * (0.55 + breathe * 0.2);
+                const g1 = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, r1);
+                g1.addColorStop(0, `rgba(40,110,220,${0.55 + breathe * 0.25})`);
+                g1.addColorStop(0.5, `rgba(20,60,130,${0.30 + breathe * 0.15})`);
+                g1.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g1;
+                ctx.fillRect(0, 0, w, h);
+
+                // secondary teal glow — lower-left
+                const r2 = w * (0.38 + breathe * 0.12);
+                const g2 = ctx.createRadialGradient(w * 0.25, h * 0.7, 0, w * 0.25, h * 0.7, r2);
+                g2.addColorStop(0, `rgba(9,104,114,${0.40 + breathe * 0.20})`);
+                g2.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g2;
+                ctx.fillRect(0, 0, w, h);
+
+                // orange pulse — upper right, slow phase
+                const r3 = w * (0.32 + orange * 0.15);
+                const g3 = ctx.createRadialGradient(w * 0.78, h * 0.25, 0, w * 0.78, h * 0.25, r3);
+                g3.addColorStop(0, `rgba(245,130,32,${0.14 + orange * 0.12})`);
+                g3.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g3;
+                ctx.fillRect(0, 0, w, h);
+
+                requestAnimationFrame(tick);
+            })();
+        })();
+    </script>
+
+    <script>
+        (() => {
+            const zone = document.querySelector('.horiz-scroll-zone');
+            const track = document.querySelector('.horiz-track');
+
+            function updateHoriz() {
+                const zoneTop = zone.offsetTop;
+                const scrolled = window.scrollY - zoneTop;
+                const totalScroll = zone.offsetHeight - window.innerHeight;
+                const progress = Math.max(0, Math.min(1, scrolled / totalScroll));
+                const maxShift = (track.children.length - 1) * (window.innerWidth * 0.6);
+                track.style.transform = `translateX(-${progress * maxShift}px)`;
+            }
+
+            window.addEventListener('scroll', updateHoriz, { passive: true });
+            window.addEventListener('resize', updateHoriz);
+            updateHoriz();
+        })();
+    </script>
+    <div class="footer">
+        <p><span style="color:#096872">Data and methodology, </span><a href="https://github.com/natalierjonas/virtual-pipelines">here</a><span style="color:#096872">.</span></p>
+    </div>
+</body>
+
+</html>
