@@ -1,0 +1,149 @@
+.scrolly-container {
+    position: relative;
+    margin-top: 3em;
+}
+
+.scrolly-container .columns {
+    margin: 0;
+}
+
+/* Left column — scrolls naturally */
+.steps-container-col {
+    padding: 0;
+}
+
+.steps-container {
+    padding: 2em 2em 2em 3em;
+    box-sizing: border-box;
+}
+
+.step {
+    color: rgb(252, 249, 249);
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    margin-bottom: 70vh;
+}
+
+.step:last-child {
+    margin-bottom: 10vh;
+}
+
+.step p {
+    margin: 0;
+    padding-bottom: 0.8em;
+    text-align: left;
+    line-height: 1.6;
+}
+
+.step p:last-child {
+    padding: 0;
+}
+
+.step > * {
+    padding: 1.2em;
+    background-color: #096872;
+    border-radius: 0;
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 6px 6px 0 0 #0a1f3a;
+    width: 100%;
+    box-sizing: border-box;
+    opacity: 0.4;
+    transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.step.is-active > * {
+    opacity: 1;
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 0 #0a1f3a;
+}
+
+/* Right column — no sticky on the column itself */
+.sticky-col {
+    padding: 0 !important;
+}
+
+/* Sticky lives on the inner div so it spans the full left-column height */
+.sticky-thing {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    overflow: hidden;
+}
+
+.sticky-thing > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.sticky-thing > canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+}
+
+.sticky-thing iframe {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.sticky-thing .ai2html {
+    width: 100%;
+    height: 100%;
+}
+
+.step-label {
+    position: absolute;
+    bottom: 1.5em;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.85);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.scrolly-footer-text {
+    padding: 1.2em;
+    margin-top: 2em;
+    font-size: 0.9em;
+    line-height: 1.6;
+    color: rgb(252, 249, 249);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .scrolly-container .columns {
+        display: block;
+    }
+
+    .sticky-thing {
+        height: 45vh;
+        width: 100%;
+        z-index: 3;
+    }
+
+    .steps-container {
+        padding: 1rem;
+    }
+
+    .step {
+        min-height: 50vh;
+        margin-bottom: 40vh;
+    }
+
+    .step:last-child {
+        margin-bottom: 5vh;
+    }
+}
